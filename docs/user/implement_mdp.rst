@@ -49,7 +49,7 @@ to move to the origin by defining its reward as the negative distance to the
 origin: :math:`r(x, y) = - \sqrt{x^2 + y^2}`.
 
 We start by creating a new file for the MDP. We assume that it is placed under
-:code:`rllab/mdp/point_mdp.py`. First, let's declare a class inheriting from
+:code:`examples/point_mdp.py`. First, let's declare a class inheriting from
 the base MDP:
 
 .. code-block:: py
@@ -154,3 +154,31 @@ that the episode is terminated.
             done = abs(x) < 0.01 and abs(y) < 0.01
             next_observation = np.copy(self._state)
             return next_observation, reward, done
+
+Finally, we can implement some plotting to visualize what the MDP is doing. For
+simplicity, let's just print the current state of the MDP on the terminal:
+
+.. code-block:: py
+
+    class PointMDP(MDP):
+
+        # ...
+
+        def plot(self):
+            print 'current state:', self._state
+
+And we're done! We can now simulate the mdp using the following diagnostic
+script:
+
+.. code-block:: bash
+
+    python scripts/sim_mdp.py --mdp examples.point_mdp --mode random
+
+It simulates an episode of the MDP with random actions, sampled from a uniform
+distribution within the defined action bounds.
+
+You could also train a neural network policy to solve the task:
+
+.. code-block:: bash
+
+    python scripts/run_experiment.py --mdp examples.point_mdp --algo trpo --policy mean_std_nn_policy --baseline linear_feature_baseline
