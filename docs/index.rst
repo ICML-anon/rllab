@@ -20,6 +20,7 @@ The RLLab user guide explains how to install RLLab, how to run experiments, and 
 
    user/installation
    user/experiments
+   user/implement_mdp
 
 
 
