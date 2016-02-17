@@ -46,7 +46,7 @@ a point robot in the 2D plane :math:`(x, y) \in \mathbb{R}^2`. The action is
 its velocity :math:`(\dot x, \dot y) \in \mathbb{R}^2` constrained so that
 :math:`|\dot x| \leq 0.1` and :math:`|\dot y| \leq 0.1`. We encourage the robot
 to move to the origin by defining its reward as the negative distance to the
-origin: :math:`r(x, y) = - x^2 - y^2`.
+origin: :math:`r(x, y) = - \sqrt{x^2 + y^2}`.
 
 We start by creating a new file for the MDP. We assume that it is placed under
 :code:`rllab/mdp/point_mdp.py`. First, let's declare a class inheriting from
@@ -150,7 +150,7 @@ that the episode is terminated.
         def step(self, action):
             self._state = self._state + action
             x, y = self._state
-            reward = - x**2 - y**2
+            reward = - (x**2 + y**2) ** 0.5
             done = abs(x) < 0.01 and abs(y) < 0.01
             next_observation = np.copy(self._state)
             return next_observation, reward, done
