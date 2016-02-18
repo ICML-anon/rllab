@@ -6,7 +6,9 @@ Implementing New Algorithms
 
 In this section, we will walk through the implementation of the classical
 REINFORCE [1]_ algorithm, also known as the "vanilla" policy gradient.
-We will exploit the utilities provided by the framework whenever possible.
+We will start with an implementation that works with a fixed policy and MDP,
+and then gradually refine our implementation using the utilities provided
+by the framework.
 
 Preliminaries
 =============
@@ -55,22 +57,173 @@ Often, we use the following estimator instead:
     
     \nabla_\theta \eta(\theta) = \mathbb{E}\left[ \sum_{t=0}^T \nabla_\theta \log \pi_\theta(a_t | s_t) \sum_{t'=t}^T \gamma^{t'-t} r(s_{t'}, a_{t'}) \right]
 
-where :math:`\gamma^{t'}` is replaced by :math:`\gamma^{t'-t}`. When viewing the discount factor as a variance reduction factor for the undiscounted objective, this alternative gradient estimator has less bias, at the expense of having a larger variance.
+where :math:`\gamma^{t'}` is replaced by :math:`\gamma^{t'-t}`. When viewing the discount factor as a variance reduction factor for the undiscounted objective, this alternative gradient estimator has less bias, at the expense of having a larger variance. We define :math:`R_t := \sum_{t'=t}^T \gamma^{t'-t} r(s_{t'}, a_{t'})` as the empirical discounted return.
 
-We can further reduce the variance by subtracting a baseline :math:`b(s_t)`
-from the empirical return :math:`\sum_{t'=t}^T \gamma^{t'-t} r(s_{t'}, a_{t'})`:
+.. We can further reduce the variance by subtracting a baseline :math:`b(s_t)` from the empirical return :math:`\sum_{t'=t}^T \gamma^{t'-t} r(s_{t'}, a_{t'})`:
 
-.. math::
+.. .. math::
     
     \nabla_\theta \eta(\theta) = \mathbb{E}\left[ \sum_{t=0}^T \nabla_\theta \log \pi_\theta(a_t | s_t) \left(\sum_{t'=t}^T \gamma^{t'-t} r(s_{t'}, a_{t'}) - b(s_{t}) \right) \right]
 
-The baseline :math:`b(s_t)` is typically implemented as an estimator of
-:math:`V^\pi(s_t)`. The above formula will be the central object of our
-implementation.
+.. The baseline :math:`b(s_t)` is typically implemented as an estimator of :math:`V^\pi(s_t)`.
+The above formula will be the central object of our implementation. The pseudocode for the whole algorithm is as below:
 
+- Initialize policy :math:`\pi` with parameter :math:`\theta_1`.
+- For iteration :math:`k = 1, 2, \ldots`:
+    - Sample N trajectories :math:`\tau_1`, ..., :math:`\tau_n` under the current policy :math:`\theta_k`, where :math:`\tau_i = (s_t^i, a_t^i, R_t^i)_{t=0}^{T-1}`. Note that the last state is dropped since no action is taken after observing the last state.
+    - Compute the empirical policy gradient:
+    .. math::
+        \widehat{\nabla_\theta \eta(\theta)} = \frac{1}{NT} \sum_{i=1}^N \sum_{t=0}^{T-1} \nabla_\theta \log \pi_\theta(a_t^i | s_t^i) R_t^i 
+    - Take a gradient step: :math:`\theta_{k+1} = \theta_k + \alpha \widehat{\nabla_\theta \eta(\theta)}`.
+
+Setup
+=====
+
+As a start, we will try to solve the cartpole balancing task using a neural
+network policy. We will later generalize our algorithm to accept configuration
+parameters. But let's keep things simple for now.
+
+.. code-block:: py
+
+    from __future__ import print_function
+    from rllab.mdp.box2d.cartpole_mdp import CartpoleMDP
+    from rllab.policy.mean_std_nn_policy import MeanStdNNPolicy
+    from rllab.mdp.normalized_mdp import normalize
+    import numpy as np
+    import theano
+    import theano.tensor as TT
+    from lasagne.updates import adam
+
+    # normalize() makes sure that the actions for the MDP lies within the range [-1, 1]
+    mdp = normalize(CartpoleMDP())
+    # Initialize a neural network policy with a single hidden layer of 32 hidden units
+    policy = MeanStdNNPolicy(mdp, hidden_sizes=[32])
+
+    # We will collect 100 trajectories per iteration
+    N = 100
+    # Each trajectory will have at most 100 time steps
+    T = 100
+    # Number of iterations
+    n_itr = 100
+    # Set the discount factor for the problem
+    discount = 0.99
+
+Collecting Samples
+==================
+
+Now, let's collect samples for the MDP under our current policy within a single
+iteration.
+
+.. code-block:: py
+
+    paths = []
+
+    for _ in xrange(N):
+        observations = []
+        actions = []
+        rewards = []
+
+        observation = mdp.reset()
+
+        for _ in xrange(T):
+            # policy.get_action() returns a pair of values. The second one
+            # summarizes the distribution of the actions in the case of a
+            # stochastic policy. This information is useful when forming
+            # importance sampling ratios. In our case it is not needed.
+            action, _ = policy.get_action(observation)
+            next_observation, reward, terminal = mdp.step(action)
+            observations.append(observation)
+            actions.append(action)
+            rewards.append(reward)
+            observation = next_observation
+            if terminal:
+                break
+
+        # We need to compute the empirical return for each time step along the
+        # trajectory
+        returns = []
+        return_so_far = 0
+        for t in xrange(len(rewards) - 1, -1, -1):
+            return_so_far = rewards[t] + discount * return_so_far
+            returns.append(return_so_far)
+        # The returns are stored backwards in time, so we need to revert it
+        returns = returns[::-1]
+
+        paths.append(dict(
+            observations=np.concatenate(observations),
+            actions=np.concatenate(actions),
+            rewards=np.array(rewards),
+            returns=np.array(returns)
+        ))
+
+Observe that according to the formula for the empirical policy gradient, we
+could concatenate all the collected data for different trajectories together,
+which helps us vectorize the implementation further.
+
+.. code-block:: py
+
+    observations = np.concatenate([path["observations"] for path in paths])
+    actions = np.concatenate([path["actions"] for path in paths])
+    returns = np.concatenate([path["returns"] for path in paths])
 
 Constructing the Computation Graph
 ==================================
 
+We will use `Theano <http://deeplearning.net/software/theano/>`_ for our
+implementation, and we assume that the reader has some familiarity with it.
+If not, it would be good to go through `some tutorials <http://nbviewer.jupyter.org/github/craffel/theano-tutorial/blob/master/Theano%20Tutorial.ipynb>`_
+first.
+
+First, we construct symbolic variables for the input data:
+
+.. code-block:: py
+
+    observations_var = TT.matrix('observations')
+    actions_var = TT.matrix('actions')
+    returns_var = TT.vector('returns')
+
+Note that we can transform the policy gradient formula as
+
+.. math::
+
+    \widehat{\nabla_\theta \eta(\theta)} = \nabla_\theta \left( \frac{1}{NT} \sum_{i=1}^N \sum_{t=0}^{T-1} \log \pi_\theta(a_t^i | s_t^i) R_t^i \right) = \nabla_\theta L(\theta)
+
+where :math:`L(\theta) = \frac{1}{NT} \sum_{i=1}^N \sum_{t=0}^{T-1} \log \pi_\theta(a_t^i | s_t^i) R_t^i` is called the surrogate function. Hence, we can first construct the computation graph for :math:`L(\theta)`, and then take its gradient to get the empirical policy gradient.
+
+.. code-block:: py
+
+    # policy.get_log_prob_sym computes the symbolic log probability of the
+    # actions given the observations
+    # Note that we negate the objective, since most optimizers assume a
+    # minimization problem
+    surr = - TT.mean(policy.get_log_prob_sym(observations_var, actions_var) * returns_var)
+    # Get the list of trainable parameters
+    params = policy.get_params(trainable=True)
+    grads = theano.grad(surr, params)
+
+Gradient Update and Diagnostics
+===============================
+
+We are almost done! Now, you can use your favorite stochastic optimization algorithm for performing the parameter update. We choose ADAM [2]_ in our implementation:
+
+.. code-block:: py
+
+    f_train = theano.function(
+        inputs=[observations_var, actions_var, returns_var],
+        outputs=None,
+        updates=adam(grads, params),
+        allow_input_downcast=True
+    )
+    f_train(observations, actions, returns)
+
+Since this algorithm is on-policy, we can evaluate its performance by inspecting the collected samples:
+
+.. code-block:: py
+
+    print('Average Return:', np.mean([sum(path["rewards"]) for path in paths]))
+
+The complete source code so far is available at `examples/vpg_1.py`.
+
 
 .. [1] Williams, Ronald J. "Simple statistical gradient-following algorithms for connectionist reinforcement learning." Machine learning 8.3-4 (1992): 229-256.
+.. [2] Kingma, Diederik P., and Jimmy Ba Adam. "A method for stochastic optimization." International Conference on Learning Representation. 2015.

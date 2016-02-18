@@ -80,8 +80,8 @@ property methods:
 
 In addition, we also need to specify the data types for the observations and
 the actions. This should be something that Numpy / Theano accepts for the
-:code:`dtype` argument. Since we typically use :code:`Theano` for implementing
-the algorithms, we make it so that the data type conform to the :code:`Theano`
+:code:`dtype` argument. Since we typically use `Theano <http://deeplearning.net/software/theano/>`_
+for implementing the algorithms, we make it so that the data type conform to Theano's
 configuration:
 
 .. code-block:: py
