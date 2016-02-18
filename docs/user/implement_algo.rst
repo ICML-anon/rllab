@@ -107,6 +107,8 @@ parameters. But let's keep things simple for now.
     n_itr = 100
     # Set the discount factor for the problem
     discount = 0.99
+    # Learning rate for the gradient update
+    learning_rate = 0.01
 
 Collecting Samples
 ==================
@@ -211,7 +213,7 @@ We are almost done! Now, you can use your favorite stochastic optimization algor
     f_train = theano.function(
         inputs=[observations_var, actions_var, returns_var],
         outputs=None,
-        updates=adam(grads, params),
+        updates=adam(grads, params, learning_rate=learning_rate),
         allow_input_downcast=True
     )
     f_train(observations, actions, returns)
