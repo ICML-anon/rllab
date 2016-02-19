@@ -152,8 +152,8 @@ iteration.
         returns = returns[::-1]
 
         paths.append(dict(
-            observations=np.concatenate(observations),
-            actions=np.concatenate(actions),
+            observations=np.array(observations),
+            actions=np.array(actions),
             rewards=np.array(rewards),
             returns=np.array(returns)
         ))
