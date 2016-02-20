@@ -1,14 +1,15 @@
-.. _implement_algo:
+.. _implement_algo_standalone:
 
-===========================
-Implementing New Algorithms
-===========================
+========================================
+Implementing New Algorithms (Standalone)
+========================================
 
 In this section, we will walk through the implementation of the classical
 REINFORCE [1]_ algorithm, also known as the "vanilla" policy gradient.
-We will start with an implementation that works with a fixed policy and MDP,
-and then gradually refine our implementation using the utilities provided
-by the framework.
+We will start with an implementation that works with a fixed policy and MDP.
+The next section :ref:`implement_algo_advanced` will improve upon this
+implementation, utilizing the functionalities provided by the framework to make
+it more structured and command-line friendly.
 
 Preliminaries
 =============
@@ -66,14 +67,25 @@ where :math:`\gamma^{t'}` is replaced by :math:`\gamma^{t'-t}`. When viewing the
     \nabla_\theta \eta(\theta) = \mathbb{E}\left[ \sum_{t=0}^T \nabla_\theta \log \pi_\theta(a_t | s_t) \left(\sum_{t'=t}^T \gamma^{t'-t} r(s_{t'}, a_{t'}) - b(s_{t}) \right) \right]
 
 .. The baseline :math:`b(s_t)` is typically implemented as an estimator of :math:`V^\pi(s_t)`.
+
+
+
 The above formula will be the central object of our implementation. The pseudocode for the whole algorithm is as below:
 
 - Initialize policy :math:`\pi` with parameter :math:`\theta_1`.
+
 - For iteration :math:`k = 1, 2, \ldots`:
-    - Sample N trajectories :math:`\tau_1`, ..., :math:`\tau_n` under the current policy :math:`\theta_k`, where :math:`\tau_i = (s_t^i, a_t^i, R_t^i)_{t=0}^{T-1}`. Note that the last state is dropped since no action is taken after observing the last state.
+
+    - Sample N trajectories :math:`\tau_1`, ..., :math:`\tau_n` under the
+      current policy :math:`\theta_k`, where
+      :math:`\tau_i = (s_t^i, a_t^i, R_t^i)_{t=0}^{T-1}`. Note that the last
+      state is dropped since no action is taken after observing the last state.
+
     - Compute the empirical policy gradient:
+
     .. math::
         \widehat{\nabla_\theta \eta(\theta)} = \frac{1}{NT} \sum_{i=1}^N \sum_{t=0}^{T-1} \nabla_\theta \log \pi_\theta(a_t^i | s_t^i) R_t^i 
+
     - Take a gradient step: :math:`\theta_{k+1} = \theta_k + \alpha \widehat{\nabla_\theta \eta(\theta)}`.
 
 Setup
@@ -164,9 +176,9 @@ which helps us vectorize the implementation further.
 
 .. code-block:: py
 
-    observations = np.concatenate([path["observations"] for path in paths])
-    actions = np.concatenate([path["actions"] for path in paths])
-    returns = np.concatenate([path["returns"] for path in paths])
+    observations = np.concatenate([p["observations"] for p in paths])
+    actions = np.concatenate([p["actions"] for p in paths])
+    returns = np.concatenate([p["returns"] for p in paths])
 
 Constructing the Computation Graph
 ==================================
@@ -224,8 +236,68 @@ Since this algorithm is on-policy, we can evaluate its performance by inspecting
 
     print('Average Return:', np.mean([sum(path["rewards"]) for path in paths]))
 
-The complete source code so far is available at `examples/vpg_1.py`.
+The complete source code so far is available at :code:`examples/vpg_1.py`.
 
+Additional Tricks
+=================
+
+Adding a Baseline
+-----------------
+
+The variance of the policy gradient can be further reduced by adding a baseline. The refined formula is given by
+
+.. math::
+    \widehat{\nabla_\theta \eta(\theta)} = \frac{1}{NT} \sum_{i=1}^N \sum_{t=0}^{T-1} \nabla_\theta \log \pi_\theta(a_t^i | s_t^i) (R_t^i - b(s_t^i))
+
+We can do this since :math:`\mathbb{E} \left[\nabla_\theta \log \pi_\theta(a_t^i | s_t^i) b(s_t^i)\right] = 0`
+
+The baseline is typically implemented as an estimator of :math:`V^\pi(s)`. In
+this case, :math:`R_t^i - b(s_t^i)` is an estimator of
+:math:`A^\pi(s_t^i, a_t^i)`. The framework implements a few options for the
+baseline. A good balance of computational efficiency and accuracy is achieved
+by a linear baseline using state features, available
+at :code:`rllab/baseline/linear_feature_baseline.py`. To use it in our implementation,
+the relevant code looks like the following:
+
+.. code-block:: py
+
+    # ... initialization code ...
+
+    from rllab.baseline.linear_feature_baseline import LinearFeatureBaseline
+    baseline = LinearFeatureBaseline(mdp)
+
+    # ... inside the loop for each episode, after the samples are collected
+
+    path = dict(
+        observations=np.array(observations),
+        actions=np.array(actions),
+        rewards=np.array(rewards),
+    )
+
+    path_baseline = baseline.predict(path)
+    advantages = []
+    return_so_far = 0
+    for t in xrange(len(rewards) - 1, -1, -1):
+        return_so_far = rewards[t] + discount * return_so_far
+        advantage = return_so_far - path_baseline[t]
+        advantages.append(advantage)
+    # The advantages are stored backwards in time, so we need to revert it
+    advantages = np.array(advantages[::-1])
+
+Normalizing the returns
+-----------------------
+
+Currently, the learning rate we set for the algorithm is very susceptible to
+reward scaling. We can alleviate this dependency by whitening the advantages
+before computing the gradients. In terms of code, this would be:
+
+.. code-block:: py
+
+    advantages = (advantages - np.mean(advantages)) / (np.std(advantages) + 1e-8)
+
+Now, we can train the policy much faster (we need to change the learning rate
+accordingly because of the rescaling). The complete source code so far is
+available at :code:`examples/vpg_2.py`
 
 .. [1] Williams, Ronald J. "Simple statistical gradient-following algorithms for connectionist reinforcement learning." Machine learning 8.3-4 (1992): 229-256.
 .. [2] Kingma, Diederik P., and Jimmy Ba Adam. "A method for stochastic optimization." International Conference on Learning Representation. 2015.

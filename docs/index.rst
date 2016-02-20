@@ -21,7 +21,8 @@ The RLLab user guide explains how to install RLLab, how to run experiments, and 
    user/installation
    user/experiments
    user/implement_mdp
-   user/implement_algo
+   user/implement_algo_standalone
+   user/implement_algo_advanced
 
 
 
