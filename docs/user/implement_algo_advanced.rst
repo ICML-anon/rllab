@@ -32,7 +32,7 @@ follows:
     - Print diagnostic information and store intermediate results.
 
 Note the parallel between the structure above and the pseudocode for VPG. The
-`BatchPolopt` class takes care of collecting samples and common diagnostic
+:code:`BatchPolopt` class takes care of collecting samples and common diagnostic
 information. It also provides an abstraction of the general procedure above, so
 that algorithm implementations only need to fill the missing pieces. The core
 of the :code:`BatchPolopt` class is the :code:`train()` method:
