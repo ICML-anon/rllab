@@ -1,8 +1,8 @@
-.. _implement_algo_standalone:
+.. _implement_algo_basic:
 
-========================================
-Implementing New Algorithms (Standalone)
-========================================
+===================================
+Implementing New Algorithms (Basic)
+===================================
 
 In this section, we will walk through the implementation of the classical
 REINFORCE [1]_ algorithm, also known as the "vanilla" policy gradient.

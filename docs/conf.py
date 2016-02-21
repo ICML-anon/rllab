@@ -52,7 +52,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'rllab'
+project = u'RLLab'
 copyright = u'2016, RLLab contributors'
 author = u'RLLab contributors'
 
@@ -235,7 +235,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  (master_doc, 'rllab.tex', u'rllab Documentation',
+  (master_doc, 'rllab.tex', u'RLLab Documentation',
    u'RLLab contributors', 'manual'),
 ]
 
@@ -265,7 +265,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'rllab', u'rllab Documentation',
+    (master_doc, 'RLLab', u'RLLab Documentation',
      [author], 1)
 ]
 
@@ -279,8 +279,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'rllab', u'rllab Documentation',
-   author, 'rllab', 'One line description of project.',
+  (master_doc, 'RLLab', u'RLLab Documentation',
+   author, 'RLLab', 'One line description of project.',
    'Miscellaneous'),
 ]
 
