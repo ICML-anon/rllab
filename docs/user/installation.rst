@@ -31,11 +31,11 @@ The fastest way to set up dependencies for rllab is via running the setup script
 
     ./script/setup_osx.sh
 
-The script sets up a virtual environment. To start using it, run the following:
+The script sets up a conda environment, which is similar to :code:`virtualenv`. To start using it, run the following:
 
 .. code-block:: bash
 
-    source .env/bin/activate
+    source activate rllab
 
 
 Optionally, if you would like to run experiments that depends on the Mujoco environment, you can set it up by running the following command:
@@ -51,17 +51,11 @@ and follow the instructions. You need to have the zip file for Mujoco v1.22 and 
 Manual Install
 ==============
 
-Python + pip
+Anaconda
 ------------
 
-RLLab currently requires Python 2.7.4 to run. Please install Python via
-the package manager of your operating system if it is not included already.
+:code:`rllab` assumes that you are using Anaconda Python distribution. You can download it from `https://www.continuum.io/downloads<https://www.continuum.io/downloads>`.  Make sure to download the installer for Python 2.7.
 
-Python includes ``pip`` for installing additional modules that are not shipped
-with your operating system, or shipped in an old version, and we will make use
-of it below. You should set up a `virtual environment
-<http://www.dabapps.com/blog/introduction-to-pip-and-virtualenv-python/>`_
-via ``virtualenv`` which we will assume below.
 
 System dependencies for pygame
 ------------------------------
@@ -73,13 +67,14 @@ On Linux, run the following:
 
 .. code-block:: bash
 
+  sudo apt-get install swig
   sudo apt-get build-dep python-pygame
 
 On Mac OS X, run the following:
 
 .. code-block:: bash
 
-  brew install sdl sdl_image sdl_mixer sdl_ttf portmidi
+  brew install swig sdl sdl_image sdl_mixer sdl_ttf portmidi
 
 System dependencies for scipy
 -----------------------------
@@ -95,4 +90,4 @@ Install Python modules
 
 .. code-block:: bash
 
-  pip install -r requirements.txt
+  conda env create -f environment.yml

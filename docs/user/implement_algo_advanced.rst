@@ -4,8 +4,8 @@
 Implementing New Algorithms (Advanced)
 ======================================
 
-In this section, we will anatomize the implementation of vanilla policy gradient
-algorithm provided in the algorithm, available at :code:`rllab/algo/vpg.py`. It utilizes
+In this section, we will walk through the implementation of vanilla policy gradient
+algorithm provided in the algorithm, available at :code:`rllab/algos/vpg.py`. It utilizes
 many functionalities provided by the framework, which we describe below.
 
 
@@ -38,11 +38,11 @@ that algorithm implementations only need to fill the missing pieces. The core
 of the :code:`BatchPolopt` class is the :code:`train()` method:
 
 
-.. code-block:: py
+.. code-block:: python
 
-    def train(self, mdp, policy, baseline, **kwargs):
+    def train(self, env, policy, baseline, **kwargs):
         # ...
-        opt_info = self.init_opt(mdp, policy, baseline)
+        opt_info = self.init_opt(env, policy, baseline)
         for itr in xrange(self.start_itr, self.n_itr):
             samples_data = self.obtain_samples(itr, mdp, policy, baseline)
             opt_info = self.optimize_policy(itr, policy, samples_data, opt_info)
@@ -59,21 +59,21 @@ per iteration.
 
 The :code:`BatchPolopt` class powers quite a few algorithms:
 
-- Vanilla Policy Gradient: :code:`rllab/algo/vpg.py`
+- Vanilla Policy Gradient: :code:`rllab/algos/vpg.py`
 
-- Natural Policy Gradient: :code:`rllab/algo/npg.py`
+- Natural Policy Gradient: :code:`rllab/algos/npg.py`
 
-- Reward-Weighted Regression: :code:`rllab/algo/erwr.py`
+- Reward-Weighted Regression: :code:`rllab/algos/erwr.py`
 
-- Trust Region Policy Optimization: :code:`rllab/algo/trpo.py`
+- Trust Region Policy Optimization: :code:`rllab/algos/trpo.py`
 
-- Relative Entropy Policy Search: :code:`rllab/algo/reps.py`
+- Relative Entropy Policy Search: :code:`rllab/algos/reps.py`
 
 To give an illustration, here's how we might implement :code:`init_opt` for VPG
-(the actual code in :code:`rllab/algo/vpg.py` is longer due to the need to log
+(the actual code in :code:`rllab/algos/vpg.py` is longer due to the need to log
 extra diagnostic information):
 
-.. code-block:: py
+.. code-block:: python
 
     from rllab.misc.ext import extract, compile_function, new_tensor
 
@@ -115,7 +115,7 @@ function which we can use later.
 
 Here's how we might implement :code:`optimize_policy`:
 
-.. code-block:: py
+.. code-block:: python
 
     def optimize_policy(self, itr, policy, samples_data, opt_info):
         f_update = opt_info["f_update"]
@@ -136,7 +136,7 @@ The :code:`rllab.parallel_sampler` module takes care of parallelizing the
 sampling process and aggregating the collected trajectory data. It is used
 by the :code:`BatchPolopt` class like below:
 
-.. code-block:: py
+.. code-block:: python
 
     # At the beginning of training, we need to register the mdp and the policy
     # onto the parallel_sampler
@@ -177,53 +177,3 @@ specify a desired total number of samples (i.e. time steps) per iteration. The
 number of trajectories collected will be around this number, although sometimes
 slightly larger, to make sure that all trajectories are run until either the
 horizon or the termination condition is met.
-
-
-Command-line Arguments
-======================
-
-We would like to make the algorithms (and MDPs) as flexible and experimentable
-as possible by exposing most of its configurations through command line
-arguments. This is accomplished by the :code:`rllab.misc.autoargs` module and
-the :code:`scripts/run_scripts.py` file.
-
-Recall that for the basic implementation, we have quite a few hyper-parameters,
-like the learning rate and the discount factor. We could expose them as command
-line arguments through decorating the :code:`__init__` method of the algorithm
-class like below:
-
-.. code-block:: py
-
-    from rllab.misc import autoargs
-
-    # ...
-
-    class VPG(BatchPolopt):
-
-        @autoargs.arg("discount", type=float, help="Discount.")
-        @autoargs.arg("learning_rate", type=float, help="Learning rate.")
-        def __init__(self, discount=0.99, learning_rate=0.01):
-            self.discount = discount
-            self.learning_rate = learning_rate
-            # ...
-
-Then, we could configure these parameter from the command line like
-:code:`--algo_discount 0.98`, etc.
-
-To inherit command line arguments of base classes, you can use the
-:code:`autoargs.inherit` decorator like below:
-
-.. code-block:: py
-
-    from rllab.misc import autoargs
-
-    # ...
-    class VPG(BatchPolopt):
-
-        @autoargs.inherit(BatchPolopt.__init__)
-        def __init__(self, *args, **kwargs):
-            # ...
-            super(VPG, self).__init__(**kwargs)
-
-Logging
-=======
