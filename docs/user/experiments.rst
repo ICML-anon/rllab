@@ -6,7 +6,7 @@ Running Experiments
 ===================
 
 
-We use object oriented abstractions for different components required for an experiment. To run an experiment, simply construct the corresponding objects for the environment, algorithm, etc. and call the appropriate train method on the algorithm. A sample script is provided in :code:`examples/trpo_cartpole.py`. The content is also repeated below for a direct glance:
+We use object oriented abstractions for different components required for an experiment. To run an experiment, simply construct the corresponding objects for the environment, algorithm, etc. and call the appropriate train method on the algorithm. A sample script is provided in :code:`examples/trpo_cartpole.py`. The code is also pasted below for a quick glance:
 
 .. code-block:: python
 
@@ -23,7 +23,13 @@ We use object oriented abstractions for different components required for an exp
         # The neural network policy should have two hidden layers, each with 32 hidden units.
         hidden_sizes=(32, 32)
     )
+
+    baseline = LinearFeatureBaseline(env_spec=env.spec)
+
     algo = TRPO(
+        env=env,
+        policy=policy,
+        baseline=baseline,
         batch_size=4000,
         whole_paths=True,
         max_path_length=100,
@@ -31,9 +37,8 @@ We use object oriented abstractions for different components required for an exp
         discount=0.99,
         step_size=0.01,
     )
-    baseline = LinearFeatureBaseline(env_spec=env.spec)
+    algo.train()
 
-    algo.train(env=env, policy=policy, baseline=baseline)
 
 Running the script for the first time might take a while for initializing
 Theano and compiling the computation graph, which can take a few minutes.
@@ -95,7 +100,7 @@ see some log messages like the following:
 Stub Mode Experiments
 =====================
 
-:code:`rllab` also supports a "stub" mode for running experiments, which supports more configurations like logging and parallelization. A sample script is provided in :code:`examples/trpo_cartpole_stub.py`. The content is copied below:
+:code:`rllab` also supports a "stub" mode for running experiments, which supports more configurations like logging and parallelization. A sample script is provided in :code:`examples/trpo_cartpole_stub.py`. The content is pasted below:
 
 .. code-block:: python
 
@@ -115,7 +120,13 @@ Stub Mode Experiments
         # The neural network policy should have two hidden layers, each with 32 hidden units.
         hidden_sizes=(32, 32)
     )
+
+    baseline = LinearFeatureBaseline(env_spec=env.spec)
+
     algo = TRPO(
+        env=env,
+        policy=policy,
+        baseline=baseline,
         batch_size=4000,
         whole_paths=True,
         max_path_length=100,
@@ -123,10 +134,9 @@ Stub Mode Experiments
         discount=0.99,
         step_size=0.01,
     )
-    baseline = LinearFeatureBaseline(env_spec=env.spec)
 
     run_experiment_lite(
-        algo.train(env=env, policy=policy, baseline=baseline),
+        algo.train(),
         # Number of parallel workers for sampling
         n_parallel=1,
         # Only keep the snapshot parameters for the last iteration
@@ -136,6 +146,7 @@ Stub Mode Experiments
         seed=1,
         # plot=True,
     )
+
 
 The first notable difference is the line `stub(globals())` after all the import calls, which replaces all imported class constructors by stubbed methods. After the call, class constructors like `TRPO()` will return a serializable stub object, and all method invocations and property accessors will also become stub method calls and stub attributes that are serializable. Then, the `run_experiment_lite` call serializes the final stubbed method call, and launches a script that actually runs the experiment.
 
