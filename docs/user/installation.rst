@@ -23,13 +23,13 @@ The fastest way to set up dependencies for rllab is via running the setup script
 
 .. code-block:: bash
 
-    ./script/setup_linux.sh
+    ./scripts/setup_linux.sh
 
 - On Mac OS X, run the following:
 
 .. code-block:: bash
 
-    ./script/setup_osx.sh
+    ./scripts/setup_osx.sh
 
 The script sets up a conda environment, which is similar to :code:`virtualenv`. To start using it, run the following:
 
@@ -42,7 +42,7 @@ Optionally, if you would like to run experiments that depends on the Mujoco envi
 
 .. code-block:: bash
 
-    ./script/setup_mujoco.sh
+    ./scripts/setup_mujoco.sh
 
 and follow the instructions. You need to have the zip file for Mujoco v1.22 and the license file ready.
 
